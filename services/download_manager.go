@@ -1035,6 +1035,30 @@ func (dm *DownloadManager) SubmitDirectDownload(reqData interface{}) (string, er
 	dm.mu.Lock()
 	defer dm.mu.Unlock()
 
+	// 检查是否已存在相同的下载任务（队列中）
+	for _, existingTask := range dm.queue {
+		if existingTask.ComicID == req.ComicID && 
+		   (existingTask.Status == "pending" || existingTask.Status == "downloading" || existingTask.Status == "paused") {
+			log.Printf("[DownloadManager] 漫画 %s 已在下载队列中，任务ID: %s，状态: %s", 
+				req.ComicID, existingTask.ID, existingTask.Status)
+			return existingTask.ID, nil
+		}
+	}
+
+	// 检查数据库中是否有未完成的任务
+	var existingTaskID string
+	err = dm.db.QueryRow(`
+		SELECT id FROM download_tasks 
+		WHERE comic_id = ? AND status IN ('pending', 'downloading', 'paused')
+		LIMIT 1
+	`, req.ComicID).Scan(&existingTaskID)
+	
+	if err == nil {
+		// 找到了现有任务
+		log.Printf("[DownloadManager] 数据库中已有漫画 %s 的下载任务: %s", req.ComicID, existingTaskID)
+		return existingTaskID, nil
+	}
+
 	// 创建任务
 	taskID := fmt.Sprintf("direct_%d", time.Now().UnixNano())
 
@@ -1088,6 +1112,8 @@ func (dm *DownloadManager) SubmitDirectDownload(reqData interface{}) (string, er
 	if err != nil {
 		return "", err
 	}
+
+	log.Printf("[DownloadManager] 创建新下载任务: %s, 漫画ID: %s, 标题: %s", taskID, req.ComicID, title)
 
 	// 加入下载队列
 	dm.queue = append(dm.queue, task)
