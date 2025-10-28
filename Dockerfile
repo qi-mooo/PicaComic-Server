@@ -18,7 +18,10 @@ RUN go mod download
 COPY . .
 
 # 构建应用
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o pica-server main.go
+# 添加 SQLite 编译标签和环境变量
+RUN CGO_ENABLED=1 GOOS=linux \
+    CGO_CFLAGS="-D_LARGEFILE64_SOURCE" \
+    go build -a -installsuffix cgo -ldflags="-s -w" -tags sqlite_omit_load_extension -o pica-server main.go
 
 # 运行阶段
 FROM alpine:latest
