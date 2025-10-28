@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -1037,9 +1038,9 @@ func (dm *DownloadManager) SubmitDirectDownload(reqData interface{}) (string, er
 
 	// 检查是否已存在相同的下载任务（队列中）
 	for _, existingTask := range dm.queue {
-		if existingTask.ComicID == req.ComicID && 
-		   (existingTask.Status == "pending" || existingTask.Status == "downloading" || existingTask.Status == "paused") {
-			log.Printf("[DownloadManager] 漫画 %s 已在下载队列中，任务ID: %s，状态: %s", 
+		if existingTask.ComicID == req.ComicID &&
+			(existingTask.Status == "pending" || existingTask.Status == "downloading" || existingTask.Status == "paused") {
+			log.Printf("[DownloadManager] 漫画 %s 已在下载队列中，任务ID: %s，状态: %s",
 				req.ComicID, existingTask.ID, existingTask.Status)
 			return existingTask.ID, nil
 		}
@@ -1052,7 +1053,7 @@ func (dm *DownloadManager) SubmitDirectDownload(reqData interface{}) (string, er
 		WHERE comic_id = ? AND status IN ('pending', 'downloading', 'paused')
 		LIMIT 1
 	`, req.ComicID).Scan(&existingTaskID)
-	
+
 	if err == nil {
 		// 找到了现有任务
 		log.Printf("[DownloadManager] 数据库中已有漫画 %s 的下载任务: %s", req.ComicID, existingTaskID)
