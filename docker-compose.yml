@@ -7,9 +7,9 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      # 持久化数据目录
+      # 数据库文件目录
       - ./data:/app/data
-      # 可以自定义下载目录
+      # 下载的漫画文件目录（分离存储）
       - ./downloads:/app/downloads
     environment:
       - GIN_MODE=release
@@ -22,7 +22,7 @@ services:
       retries: 3
       start_period: 5s
 
-# 网络配置（可选）
+# 网络配置
 networks:
   default:
     name: pica-network
