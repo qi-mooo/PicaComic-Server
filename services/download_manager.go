@@ -101,7 +101,7 @@ func (dm *DownloadManager) migrateTables() error {
 		FROM pragma_table_info('comics') 
 		WHERE name='detail_url'
 	`).Scan(&columnExists)
-	
+
 	if err != nil {
 		return fmt.Errorf("检查 detail_url 列失败: %w", err)
 	}
@@ -1203,6 +1203,21 @@ func sanitizeFolderName(name string) string {
 	return safe
 }
 
+// extractBookIdFromUrl 从 JM 图片 URL 中提取 bookId
+func extractBookIdFromUrl(url string) string {
+	// JM URL 格式: https://cdn.../photos/12345/abc123.jpg
+	// bookId 是文件名（不含扩展名）
+	parts := strings.Split(url, "/")
+	if len(parts) > 0 {
+		filename := parts[len(parts)-1]
+		// 移除扩展名和查询参数
+		filename = strings.Split(filename, "?")[0]
+		filename = strings.TrimSuffix(filename, filepath.Ext(filename))
+		return filename
+	}
+	return ""
+}
+
 // downloadDirectComic 直接下载模式（客户端已获取URL）
 func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error {
 	// 解析 Extra 中的 episodes 数据和 detail_url
@@ -1298,6 +1313,23 @@ func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error 
 			info, _ := os.Stat(filePath)
 			if info.Size() < 100 {
 				return fmt.Errorf("下载的文件过小（可能失败）: %d bytes", info.Size())
+			}
+
+			// JM 漫画需要反混淆处理
+			if task.Type == "jm" {
+				// 从漫画ID中提取章节ID (移除 "jm" 前缀)
+				epsId := strings.TrimPrefix(task.ComicID, "jm")
+				
+				// 从 URL 中提取 bookId
+				bookId := extractBookIdFromUrl(pageURL)
+				
+				fmt.Printf("[JM反混淆] 处理图片: epsId=%s, bookId=%s\n", epsId, bookId)
+				if err := DescrambleJmImage(filePath, epsId, "220980", bookId); err != nil {
+					fmt.Printf("[警告] JM图片反混淆失败: %v\n", err)
+					// 不中断下载，继续处理其他图片
+				} else {
+					fmt.Printf("[JM反混淆] ✅ 图片反混淆成功\n")
+				}
 			}
 
 			downloadedPages++
