@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	_ "image/gif" // 支持 GIF 格式
 	"image/jpeg"
 	"image/png"
-	_ "image/gif"  // 支持 GIF 格式
 	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
 )
 
 // JM 图片反混淆
@@ -38,7 +36,7 @@ func getSegmentationNum(epsId, scrambleID, pictureName string) int {
 func DescrambleJmImage(inputPath, epsId, scrambleId, bookId string) error {
 	// 计算分割数
 	num := getSegmentationNum(epsId, scrambleId, bookId)
-	
+
 	if num <= 1 {
 		// 不需要处理
 		return nil
@@ -60,7 +58,7 @@ func DescrambleJmImage(inputPath, epsId, scrambleId, bookId string) error {
 	if err != nil {
 		return fmt.Errorf("解码图片失败 (format: %s): %w", format, err)
 	}
-	
+
 	fmt.Printf("[JM反混淆] 检测到图片格式: %s, 尺寸: %dx%d\n", format, img.Bounds().Dx(), img.Bounds().Dy())
 
 	// 获取图片尺寸
@@ -78,8 +76,8 @@ func DescrambleJmImage(inputPath, epsId, scrambleId, bookId string) error {
 	// 重新排列切片
 	for i := 0; i < num; i++ {
 		copyY := copyHeight * i
-		pasteY := height - copyHeight * (i + 1)
-		
+		pasteY := height - copyHeight*(i+1)
+
 		if i < remainder {
 			pasteY -= remainder - i
 		} else {
@@ -115,11 +113,11 @@ func DescrambleJmImage(inputPath, epsId, scrambleId, bookId string) error {
 		// 默认使用 JPEG
 		err = jpeg.Encode(outFile, newImg, &jpeg.Options{Quality: 95})
 	}
-	
+
 	if err != nil {
 		return fmt.Errorf("编码图片失败: %w", err)
 	}
-	
+
 	fmt.Printf("[JM反混淆] 图片已保存 (格式: %s)\n", format)
 	return nil
 }
