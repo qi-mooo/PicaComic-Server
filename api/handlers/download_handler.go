@@ -195,9 +195,10 @@ type DirectDownloadRequest struct {
 }
 
 type DirectEpisode struct {
-	Order    int      `json:"order"`     // 章节序号 (1-based)
-	Name     string   `json:"name"`      // 章节名称
-	PageURLs []string `json:"page_urls"` // 图片URL列表
+	Order    int               `json:"order"`     // 章节序号 (1-based)
+	Name     string            `json:"name"`      // 章节名称
+	PageURLs []string          `json:"page_urls"` // 图片URL列表
+	Headers  map[string]string `json:"headers"`   // HTTP请求头（客户端提供）
 }
 
 // SubmitDirectDownload 提交直接下载任务（客户端已获取URL）
