@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"sort"
@@ -203,15 +205,28 @@ type DirectEpisode struct {
 
 // SubmitDirectDownload 提交直接下载任务（客户端已获取URL）
 func SubmitDirectDownload(c *gin.Context) {
+	// 先读取原始请求体用于调试
+	bodyBytes, _ := c.GetRawData()
+	log.Printf("[DirectDownload] 收到请求，Body长度: %d bytes", len(bodyBytes))
+	
+	// 重新设置请求体供后续使用
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	
 	var req DirectDownloadRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[DirectDownload] ❌ JSON解析失败: %v", err)
+		log.Printf("[DirectDownload] 请求Body: %s", string(bodyBytes))
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "请求参数错误: " + err.Error(),
 		})
 		return
 	}
 
+	log.Printf("[DirectDownload] ✓ JSON解析成功")
+	log.Printf("[DirectDownload] ComicID: %s, Type: %s, Episodes: %d", req.ComicID, req.Type, len(req.Episodes))
+	
 	if req.ComicID == "" || len(req.Episodes) == 0 {
+		log.Printf("[DirectDownload] ❌ 参数验证失败: ComicID=%s, Episodes=%d", req.ComicID, len(req.Episodes))
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "缺少必要参数：comic_id 和 episodes",
 		})
