@@ -1029,9 +1029,10 @@ func (dm *DownloadManager) SubmitDirectDownload(reqData interface{}) (string, er
 		Description string              `json:"description"`
 		Tags        map[string][]string `json:"tags"`
 		Episodes    []struct {
-			Order    int      `json:"order"`
-			Name     string   `json:"name"`
-			PageURLs []string `json:"page_urls"`
+			Order    int               `json:"order"`
+			Name     string            `json:"name"`
+			PageURLs []string          `json:"page_urls"`
+			Headers  map[string]string `json:"headers"` // 客户端提供的 HTTP headers
 		} `json:"episodes"`
 	}
 
@@ -1171,9 +1172,10 @@ func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error 
 	var extra struct {
 		DirectMode bool `json:"direct_mode"`
 		Episodes   []struct {
-			Order    int      `json:"order"`
-			Name     string   `json:"name"`
-			PageURLs []string `json:"page_urls"`
+			Order    int               `json:"order"`
+			Name     string            `json:"name"`
+			PageURLs []string          `json:"page_urls"`
+			Headers  map[string]string `json:"headers"` // 客户端提供的 HTTP headers
 		} `json:"episodes"`
 	}
 
@@ -1235,12 +1237,21 @@ func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error 
 
 		fmt.Printf("[直接下载] 章节 %d (%s) 共有 %d 张图片\n", ep.Order, ep.Name, len(ep.PageURLs))
 
+		// 优先使用客户端提供的 headers，否则使用服务器端默认的
+		episodeHeaders := imageHeaders
+		if ep.Headers != nil && len(ep.Headers) > 0 {
+			episodeHeaders = ep.Headers
+			fmt.Printf("[直接下载] 使用客户端提供的 headers: %d 个\n", len(episodeHeaders))
+		} else {
+			fmt.Printf("[直接下载] 使用服务器端默认 headers\n")
+		}
+
 		for index, pageURL := range ep.PageURLs {
 			filePath := filepath.Join(epDir, fmt.Sprintf("%03d.jpg", index+1))
 			fmt.Printf("[直接下载] 正在下载章节 %d 第 %d/%d 页\n", ep.Order, index+1, len(ep.PageURLs))
 
-			// 使用漫画类型对应的请求头下载图片
-			if err := dm.downloadFileWithHeaders(pageURL, filePath, imageHeaders); err != nil {
+			// 使用章节对应的请求头下载图片
+			if err := dm.downloadFileWithHeaders(pageURL, filePath, episodeHeaders); err != nil {
 				fmt.Printf("[错误] 下载失败: %v\n", err)
 				return fmt.Errorf("下载章节 %d 第 %d 页失败: %w", ep.Order, index+1, err)
 			}
