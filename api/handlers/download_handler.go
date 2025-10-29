@@ -192,6 +192,7 @@ type DirectDownloadRequest struct {
 	Cover       string              `json:"cover"`
 	Author      string              `json:"author"`
 	Description string              `json:"description"`
+	DetailURL   string              `json:"detail_url"` // 详情页链接
 	Tags        map[string][]string `json:"tags"`
 	Episodes    []DirectEpisode     `json:"episodes"`
 }
@@ -224,12 +225,12 @@ func SubmitDirectDownload(c *gin.Context) {
 
 	log.Printf("[DirectDownload] ✓ JSON解析成功")
 	log.Printf("[DirectDownload] ComicID: %s, Type: %s, Episodes: %d", req.ComicID, req.Type, len(req.Episodes))
-	
+
 	// 打印完整请求用于调试
 	if len(req.Episodes) == 0 {
 		log.Printf("[DirectDownload] ⚠️ Episodes 为空！完整请求: %s", string(bodyBytes))
 	} else {
-		log.Printf("[DirectDownload] 第一个Episode示例: Order=%d, Name=%s, PageURLs=%d, Headers=%d", 
+		log.Printf("[DirectDownload] 第一个Episode示例: Order=%d, Name=%s, PageURLs=%d, Headers=%d",
 			req.Episodes[0].Order, req.Episodes[0].Name, len(req.Episodes[0].PageURLs), len(req.Episodes[0].Headers))
 	}
 

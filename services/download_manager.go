@@ -120,7 +120,8 @@ func (dm *DownloadManager) createTables() error {
 			size INTEGER,
 			directory TEXT,
 			eps TEXT,
-			downloaded_eps TEXT
+			downloaded_eps TEXT,
+			detail_url TEXT
 		)
 	`)
 	if err != nil {
@@ -927,8 +928,8 @@ func (repo *TaskRepository) SaveComicDetail(comic *models.ComicDetail) error {
 	_, err := repo.db.Exec(`
 		INSERT INTO comics (
 			id, title, author, description, cover, tags, categories,
-			eps_count, pages_count, type, time, size, directory, eps, downloaded_eps
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			eps_count, pages_count, type, time, size, directory, eps, downloaded_eps, detail_url
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			title = excluded.title,
 			author = excluded.author,
@@ -941,6 +942,7 @@ func (repo *TaskRepository) SaveComicDetail(comic *models.ComicDetail) error {
 			type = excluded.type,
 			time = excluded.time,
 			size = excluded.size,
+			detail_url = excluded.detail_url,
 			directory = excluded.directory,
 			eps = excluded.eps,
 			downloaded_eps = excluded.downloaded_eps
@@ -960,6 +962,7 @@ func (repo *TaskRepository) SaveComicDetail(comic *models.ComicDetail) error {
 		comic.Directory,
 		string(epsJSON),
 		string(downloadedEpsJSON),
+		comic.DetailURL,
 	)
 	return err
 }
@@ -1027,6 +1030,7 @@ func (dm *DownloadManager) SubmitDirectDownload(reqData interface{}) (string, er
 		Cover       string              `json:"cover"`
 		Author      string              `json:"author"`
 		Description string              `json:"description"`
+		DetailURL   string              `json:"detail_url"` // 详情页链接
 		Tags        map[string][]string `json:"tags"`
 		Episodes    []struct {
 			Order    int               `json:"order"`
@@ -1096,10 +1100,11 @@ func (dm *DownloadManager) SubmitDirectDownload(reqData interface{}) (string, er
 		UpdatedAt:       time.Now(),
 	}
 
-	// 将 episodes 数据存入 Extra
+	// 将 episodes 数据和 detail_url 存入 Extra
 	extraData := map[string]interface{}{
 		"direct_mode": true,
 		"episodes":    req.Episodes,
+		"detail_url":  req.DetailURL,
 	}
 	extraJSON, _ := json.Marshal(extraData)
 	task.Extra = string(extraJSON)
@@ -1168,9 +1173,10 @@ func sanitizeFolderName(name string) string {
 
 // downloadDirectComic 直接下载模式（客户端已获取URL）
 func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error {
-	// 解析 Extra 中的 episodes 数据
+	// 解析 Extra 中的 episodes 数据和 detail_url
 	var extra struct {
-		DirectMode bool `json:"direct_mode"`
+		DirectMode bool   `json:"direct_mode"`
+		DetailURL  string `json:"detail_url"` // 详情页链接
 		Episodes   []struct {
 			Order    int               `json:"order"`
 			Name     string            `json:"name"`
@@ -1295,13 +1301,14 @@ func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error 
 			Cover:       task.Cover,
 			Author:      task.Author,
 			Description: task.Description,
-			Tags:        allTags,    // 所有标签
-			Categories:  categories, // 分类（从tags中提取的category键）
+			Tags:        allTags,       // 所有标签
+			Categories:  categories,    // 分类（从tags中提取的category键）
 			Type:        task.Type,
 			EpsCount:    len(extra.Episodes),
 			PagesCount:  task.TotalPages,
-			Size:        folderSize, // 计算的实际大小（字节）
+			Size:        folderSize,    // 计算的实际大小（字节）
 			Time:        time.Now(),
+			DetailURL:   extra.DetailURL, // 详情页链接
 		},
 		Directory:     folderName, // 使用安全的文件夹名称
 		Eps:           epNames,

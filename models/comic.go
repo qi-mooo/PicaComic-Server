@@ -15,7 +15,8 @@ type Comic struct {
 	PagesCount  int       `json:"pages_count"`
 	Type        string    `json:"type"` // picacg, ehentai, jm, etc.
 	Time        time.Time `json:"time"`
-	Size        int64     `json:"size"` // 文件大小（字节）
+	Size        int64     `json:"size"`     // 文件大小（字节）
+	DetailURL   string    `json:"detail_url"` // 详情页链接
 }
 
 // ComicDetail 漫画详细信息
