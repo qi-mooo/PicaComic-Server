@@ -79,9 +79,41 @@ func (dm *DownloadManager) init() error {
 		return fmt.Errorf("创建数据表失败: %w", err)
 	}
 
+	// 运行数据库迁移
+	if err := dm.migrateTables(); err != nil {
+		return fmt.Errorf("数据库迁移失败: %w", err)
+	}
+
 	// 加载未完成的任务
 	if err := dm.loadPendingTasks(); err != nil {
 		return fmt.Errorf("加载待处理任务失败: %w", err)
+	}
+
+	return nil
+}
+
+// migrateTables 执行数据库迁移
+func (dm *DownloadManager) migrateTables() error {
+	// 检查 comics 表是否有 detail_url 列
+	var columnExists bool
+	err := dm.db.QueryRow(`
+		SELECT COUNT(*) > 0 
+		FROM pragma_table_info('comics') 
+		WHERE name='detail_url'
+	`).Scan(&columnExists)
+	
+	if err != nil {
+		return fmt.Errorf("检查 detail_url 列失败: %w", err)
+	}
+
+	// 如果列不存在，添加它
+	if !columnExists {
+		log.Println("[Migration] 添加 detail_url 列到 comics 表")
+		_, err = dm.db.Exec(`ALTER TABLE comics ADD COLUMN detail_url TEXT`)
+		if err != nil {
+			return fmt.Errorf("添加 detail_url 列失败: %w", err)
+		}
+		log.Println("[Migration] ✓ detail_url 列添加成功")
 	}
 
 	return nil
