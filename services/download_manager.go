@@ -386,9 +386,15 @@ func (dm *DownloadManager) getImageHeaders(comicType string, url string) map[str
 		// Picacg图片通过其CDN提供，通常不需要特殊认证
 
 	case "jm":
-		// JM 图片请求头
-		headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+		// JM 图片请求头（更完整的浏览器请求头）
+		headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 		headers["Referer"] = "https://18comic.vip/"
+		headers["Accept"] = "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+		headers["Accept-Language"] = "zh-CN,zh;q=0.9,en;q=0.8"
+		headers["Accept-Encoding"] = "gzip, deflate, br"
+		headers["Sec-Fetch-Dest"] = "image"
+		headers["Sec-Fetch-Mode"] = "no-cors"
+		headers["Sec-Fetch-Site"] = "cross-site"
 
 	case "ehentai":
 		// EHentai 图片请求头
