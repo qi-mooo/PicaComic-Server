@@ -1225,10 +1225,11 @@ func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error 
 		DirectMode bool   `json:"direct_mode"`
 		DetailURL  string `json:"detail_url"` // 详情页链接
 		Episodes   []struct {
-			Order    int               `json:"order"`
-			Name     string            `json:"name"`
-			PageURLs []string          `json:"page_urls"`
-			Headers  map[string]string `json:"headers"` // 客户端提供的 HTTP headers
+			Order            int               `json:"order"`
+			Name             string            `json:"name"`
+			PageURLs         []string          `json:"page_urls"`
+			Headers          map[string]string `json:"headers"`           // 客户端提供的 HTTP headers
+			DescrambleParams map[string]string `json:"descramble_params"` // 反混淆参数（可选）
 		} `json:"episodes"`
 	}
 
@@ -1318,20 +1319,20 @@ func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error 
 			// 稍微等待确保文件完全写入磁盘
 			time.Sleep(10 * time.Millisecond)
 
-			// JM 漫画需要反混淆处理
-			if task.Type == "jm" {
-				// 从漫画ID中提取章节ID (移除 "jm" 前缀)
-				epsId := strings.TrimPrefix(task.ComicID, "jm")
-
+			// 如果有反混淆参数，进行反混淆处理
+			if ep.DescrambleParams != nil && len(ep.DescrambleParams) > 0 {
+				epsId := ep.DescrambleParams["epsId"]
+				scrambleId := ep.DescrambleParams["scrambleId"]
+				
 				// 从 URL 中提取 bookId
 				bookId := extractBookIdFromUrl(pageURL)
 
-				fmt.Printf("[JM反混淆] 处理图片: epsId=%s, bookId=%s\n", epsId, bookId)
-				if err := DescrambleJmImage(filePath, epsId, "220980", bookId); err != nil {
-					fmt.Printf("[警告] JM图片反混淆失败: %v\n", err)
+				fmt.Printf("[反混淆] 处理图片: epsId=%s, scrambleId=%s, bookId=%s\n", epsId, scrambleId, bookId)
+				if err := DescrambleJmImage(filePath, epsId, scrambleId, bookId); err != nil {
+					fmt.Printf("[警告] 图片反混淆失败: %v\n", err)
 					// 不中断下载，继续处理其他图片
 				} else {
-					fmt.Printf("[JM反混淆] ✅ 图片反混淆成功\n")
+					fmt.Printf("[反混淆] ✅ 图片反混淆成功\n")
 				}
 			}
 

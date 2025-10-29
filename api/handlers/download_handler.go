@@ -198,10 +198,11 @@ type DirectDownloadRequest struct {
 }
 
 type DirectEpisode struct {
-	Order    int               `json:"order"`     // 章节序号 (1-based)
-	Name     string            `json:"name"`      // 章节名称
-	PageURLs []string          `json:"page_urls"` // 图片URL列表
-	Headers  map[string]string `json:"headers"`   // HTTP请求头（客户端提供）
+	Order            int               `json:"order"`             // 章节序号 (1-based)
+	Name             string            `json:"name"`              // 章节名称
+	PageURLs         []string          `json:"page_urls"`         // 图片URL列表
+	Headers          map[string]string `json:"headers"`           // HTTP请求头（客户端提供）
+	DescrambleParams map[string]string `json:"descramble_params"` // 反混淆参数（可选，用于JM等）
 }
 
 // SubmitDirectDownload 提交直接下载任务（客户端已获取URL）
@@ -234,12 +235,12 @@ func SubmitDirectDownload(c *gin.Context) {
 	log.Printf("  - DetailURL: %s", req.DetailURL)
 	log.Printf("  - Episodes: %d", len(req.Episodes))
 	log.Printf("  - Tags: %v", req.Tags)
-	
+
 	// 打印完整请求用于调试
 	if len(req.Episodes) == 0 {
 		log.Printf("[DirectDownload] ⚠️ Episodes 为空！完整请求: %s", string(bodyBytes))
 	} else {
-		log.Printf("[DirectDownload] 第一个Episode示例: Order=%d, Name=%s, PageURLs=%d, Headers=%d", 
+		log.Printf("[DirectDownload] 第一个Episode示例: Order=%d, Name=%s, PageURLs=%d, Headers=%d",
 			req.Episodes[0].Order, req.Episodes[0].Name, len(req.Episodes[0].PageURLs), len(req.Episodes[0].Headers))
 	}
 

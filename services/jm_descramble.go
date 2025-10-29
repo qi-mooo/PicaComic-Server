@@ -2,6 +2,8 @@ package services
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"image"
 	_ "image/gif" // 支持 GIF 格式
@@ -11,34 +13,50 @@ import (
 	"strconv"
 )
 
-// JM 图片反混淆
+// JM 图片反混淆 - 转换自客户端算法
 
 func getSegmentationNum(epsId, scrambleID, pictureName string) int {
 	scrambleId, _ := strconv.Atoi(scrambleID)
 	epsID, _ := strconv.Atoi(epsId)
+	num := 0
 
 	if epsID < scrambleId {
-		return 0
+		num = 0
 	} else if epsID < 268850 {
-		return 10
+		num = 10
 	} else if epsID > 421926 {
+		// 计算 MD5 hash
 		hashStr := fmt.Sprintf("%d%s", epsID, pictureName)
-		hash := 0
-		for _, char := range hashStr {
-			hash = int(char) + ((hash << 5) - hash)
-		}
-		return hash % 10
+		hash := md5.Sum([]byte(hashStr))
+		hashHex := hex.EncodeToString(hash[:])
+		// 获取最后一个字符的 ASCII 值
+		charCode := int(hashHex[len(hashHex)-1])
+		remainder := charCode % 8
+		num = remainder*2 + 2
+	} else {
+		// 计算 MD5 hash
+		hashStr := fmt.Sprintf("%d%s", epsID, pictureName)
+		hash := md5.Sum([]byte(hashStr))
+		hashHex := hex.EncodeToString(hash[:])
+		// 获取最后一个字符的 ASCII 值
+		charCode := int(hashHex[len(hashHex)-1])
+		remainder := charCode % 10
+		num = remainder*2 + 2
 	}
-	return 0
+
+	return num
 }
 
 // DescrambleJmImage 对 JM 图片进行反混淆
 func DescrambleJmImage(inputPath, epsId, scrambleId, bookId string) error {
 	// 计算分割数
 	num := getSegmentationNum(epsId, scrambleId, bookId)
-
+	
+	fmt.Printf("[JM反混淆] epsId=%s, scrambleId=%s, bookId=%s, num=%d\n", epsId, scrambleId, bookId, num)
+	
 	if num <= 1 {
 		// 不需要处理
+		fmt.Printf("[JM反混淆] 无需反混淆 (num=%d)\n", num)
 		return nil
 	}
 
@@ -58,7 +76,7 @@ func DescrambleJmImage(inputPath, epsId, scrambleId, bookId string) error {
 	if err != nil {
 		return fmt.Errorf("解码图片失败 (format: %s): %w", format, err)
 	}
-
+	
 	fmt.Printf("[JM反混淆] 检测到图片格式: %s, 尺寸: %dx%d\n", format, img.Bounds().Dx(), img.Bounds().Dy())
 
 	// 获取图片尺寸
@@ -67,32 +85,44 @@ func DescrambleJmImage(inputPath, epsId, scrambleId, bookId string) error {
 	height := bounds.Dy()
 
 	// 计算每个切片的高度
+	blockSize := height / num
 	remainder := height % num
-	copyHeight := height / num
+
+	// 创建切片信息
+	type Block struct {
+		start int
+		end   int
+	}
+	blocks := make([]Block, num)
+
+	for i := 0; i < num; i++ {
+		start := i * blockSize
+		end := start + blockSize
+		if i == num-1 {
+			end += remainder // 最后一个块包含余数
+		}
+		blocks[i] = Block{start: start, end: end}
+		fmt.Printf("[JM反混淆] 块 %d: start=%d, end=%d, height=%d\n", i, start, end, end-start)
+	}
 
 	// 创建新图片
 	newImg := image.NewRGBA(bounds)
 
-	// 重新排列切片
-	for i := 0; i < num; i++ {
-		copyY := copyHeight * i
-		pasteY := height - copyHeight*(i+1)
-
-		if i < remainder {
-			pasteY -= remainder - i
-		} else {
-			pasteY -= remainder
-		}
+	// 反向排列切片（从最后一个块开始）
+	y := 0
+	for i := num - 1; i >= 0; i-- {
+		block := blocks[i]
+		currBlockHeight := block.end - block.start
+		
+		fmt.Printf("[JM反混淆] 复制块 %d (src: %d-%d) -> (dst: %d-%d)\n", 
+			i, block.start, block.end, y, y+currBlockHeight)
 
 		// 复制像素
-		for y := 0; y < copyHeight; y++ {
+		for srcY := block.start; srcY < block.end; srcY++ {
 			for x := 0; x < width; x++ {
-				srcY := copyY + y
-				dstY := pasteY + y
-				if srcY < height && dstY >= 0 && dstY < height {
-					newImg.Set(x, dstY, img.At(x, srcY))
-				}
+				newImg.Set(x, y, img.At(x, srcY))
 			}
+			y++
 		}
 	}
 
