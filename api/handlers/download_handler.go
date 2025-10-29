@@ -224,13 +224,22 @@ func SubmitDirectDownload(c *gin.Context) {
 	}
 
 	log.Printf("[DirectDownload] ✓ JSON解析成功")
-	log.Printf("[DirectDownload] ComicID: %s, Type: %s, Episodes: %d", req.ComicID, req.Type, len(req.Episodes))
-
+	log.Printf("[DirectDownload] 基本信息:")
+	log.Printf("  - ComicID: %s", req.ComicID)
+	log.Printf("  - Type: %s", req.Type)
+	log.Printf("  - Title: %s", req.Title)
+	log.Printf("  - Author: %s", req.Author)
+	log.Printf("  - Description: %s", req.Description)
+	log.Printf("  - Cover: %s", req.Cover)
+	log.Printf("  - DetailURL: %s", req.DetailURL)
+	log.Printf("  - Episodes: %d", len(req.Episodes))
+	log.Printf("  - Tags: %v", req.Tags)
+	
 	// 打印完整请求用于调试
 	if len(req.Episodes) == 0 {
 		log.Printf("[DirectDownload] ⚠️ Episodes 为空！完整请求: %s", string(bodyBytes))
 	} else {
-		log.Printf("[DirectDownload] 第一个Episode示例: Order=%d, Name=%s, PageURLs=%d, Headers=%d",
+		log.Printf("[DirectDownload] 第一个Episode示例: Order=%d, Name=%s, PageURLs=%d, Headers=%d", 
 			req.Episodes[0].Order, req.Episodes[0].Name, len(req.Episodes[0].PageURLs), len(req.Episodes[0].Headers))
 	}
 
