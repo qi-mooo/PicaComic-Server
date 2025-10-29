@@ -547,7 +547,7 @@ func (dm *DownloadManager) GetAllComics() ([]models.ComicDetail, error) {
 
 	rows, err := dm.db.Query(`
 		SELECT id, title, author, description, cover, tags, categories,
-		       eps_count, pages_count, type, time, size, directory, eps, downloaded_eps
+		       eps_count, pages_count, type, time, size, directory, eps, downloaded_eps, detail_url
 		FROM comics
 		ORDER BY time DESC
 	`)
@@ -562,7 +562,7 @@ func (dm *DownloadManager) GetAllComics() ([]models.ComicDetail, error) {
 				&comic.ID, &comic.Title, &comic.Author, &comic.Description,
 				&comic.Cover, &tagsJSON, &categoriesJSON, &comic.EpsCount,
 				&comic.PagesCount, &comic.Type, &timeUnix, &comic.Size,
-				&comic.Directory, &epsJSON, &downloadedEpsJSON,
+				&comic.Directory, &epsJSON, &downloadedEpsJSON, &comic.DetailURL,
 			)
 			if err == nil {
 				// 确保即使JSON为空也初始化为空数组
@@ -700,13 +700,13 @@ func (dm *DownloadManager) GetComic(id string) (*models.ComicDetail, error) {
 
 	err := dm.db.QueryRow(`
 		SELECT id, title, author, description, cover, tags, categories,
-		       eps_count, pages_count, type, time, size, directory, eps, downloaded_eps
+		       eps_count, pages_count, type, time, size, directory, eps, downloaded_eps, detail_url
 		FROM comics WHERE id = ?
 	`, id).Scan(
 		&comic.ID, &comic.Title, &comic.Author, &comic.Description,
 		&comic.Cover, &tagsJSON, &categoriesJSON, &comic.EpsCount,
 		&comic.PagesCount, &comic.Type, &timeUnix, &comic.Size,
-		&comic.Directory, &epsJSON, &downloadedEpsJSON,
+		&comic.Directory, &epsJSON, &downloadedEpsJSON, &comic.DetailURL,
 	)
 
 	if err != nil {
@@ -1301,12 +1301,12 @@ func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error 
 			Cover:       task.Cover,
 			Author:      task.Author,
 			Description: task.Description,
-			Tags:        allTags,       // 所有标签
-			Categories:  categories,    // 分类（从tags中提取的category键）
+			Tags:        allTags,    // 所有标签
+			Categories:  categories, // 分类（从tags中提取的category键）
 			Type:        task.Type,
 			EpsCount:    len(extra.Episodes),
 			PagesCount:  task.TotalPages,
-			Size:        folderSize,    // 计算的实际大小（字节）
+			Size:        folderSize, // 计算的实际大小（字节）
 			Time:        time.Now(),
 			DetailURL:   extra.DetailURL, // 详情页链接
 		},
