@@ -1210,29 +1210,29 @@ func sanitizeFolderName(name string) string {
 func extractBookIdFromUrl(url string) string {
 	// JM URL 格式: https://cdn.../photos/12345/abc123.webp
 	// 客户端逻辑：从最后一个 / 之后开始，去掉最后5个字符（.webp）
-	
+
 	// 先移除查询参数
 	url = strings.Split(url, "?")[0]
-	
+
 	// 找到最后一个 /
 	lastSlash := strings.LastIndex(url, "/")
 	if lastSlash == -1 || lastSlash == len(url)-1 {
 		return ""
 	}
-	
+
 	// 提取文件名部分
 	filename := url[lastSlash+1:]
-	
+
 	// 去掉最后5个字符（与客户端一致）
 	if len(filename) > 5 {
 		filename = filename[:len(filename)-5]
 	}
-	
+
 	// 移除第一个 . 之后的所有内容（与客户端一致）
 	if dotIndex := strings.Index(filename, "."); dotIndex != -1 {
 		filename = filename[:dotIndex]
 	}
-	
+
 	return filename
 }
 
@@ -1243,11 +1243,12 @@ func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error 
 		DirectMode bool   `json:"direct_mode"`
 		DetailURL  string `json:"detail_url"` // 详情页链接
 		Episodes   []struct {
-			Order            int               `json:"order"`
-			Name             string            `json:"name"`
-			PageURLs         []string          `json:"page_urls"`
-			Headers          map[string]string `json:"headers"`           // 客户端提供的 HTTP headers
-			DescrambleParams map[string]string `json:"descramble_params"` // 反混淆参数（可选）
+			Order                int                 `json:"order"`
+			Name                 string              `json:"name"`
+			PageURLs             []string            `json:"page_urls"`
+			Headers              map[string]string   `json:"headers"`                 // 客户端提供的 HTTP headers
+			DescrambleParams     map[string]string   `json:"descramble_params"`       // 全局反混淆参数（可选）
+			PageDescrambleParams []map[string]string `json:"page_descramble_params"`  // 每个图片的反混淆参数（可选）
 		} `json:"episodes"`
 	}
 
@@ -1341,16 +1342,24 @@ func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error 
 			if ep.DescrambleParams != nil && len(ep.DescrambleParams) > 0 {
 				epsId := ep.DescrambleParams["epsId"]
 				scrambleId := ep.DescrambleParams["scrambleId"]
+				
+				// 使用客户端传来的 bookId（如果有）
+				var bookId string
+				if ep.PageDescrambleParams != nil && index < len(ep.PageDescrambleParams) {
+					bookId = ep.PageDescrambleParams[index]["bookId"]
+					fmt.Printf("[反混淆] 使用客户端提供的 bookId: %s\n", bookId)
+				} else {
+					// 回退：从 URL 中提取 bookId
+					bookId = extractBookIdFromUrl(pageURL)
+					fmt.Printf("[反混淆] 回退：从URL提取 bookId: %s\n", bookId)
+				}
 
-				// 从 URL 中提取 bookId
-				bookId := extractBookIdFromUrl(pageURL)
-
-				fmt.Printf("[反混淆] 处理图片: epsId=%s, scrambleId=%s, bookId=%s\n", epsId, scrambleId, bookId)
+				fmt.Printf("[反混淆] 处理图片 %d: epsId=%s, scrambleId=%s, bookId=%s\n", index+1, epsId, scrambleId, bookId)
 				if err := DescrambleJmImage(filePath, epsId, scrambleId, bookId); err != nil {
 					fmt.Printf("[警告] 图片反混淆失败: %v\n", err)
 					// 不中断下载，继续处理其他图片
 				} else {
-					fmt.Printf("[反混淆] ✅ 图片反混淆成功\n")
+					fmt.Printf("[反混淆] ✅ 图片 %d 反混淆成功\n", index+1)
 				}
 			}
 
