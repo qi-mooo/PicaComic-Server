@@ -208,10 +208,10 @@ func SubmitDirectDownload(c *gin.Context) {
 	// 先读取原始请求体用于调试
 	bodyBytes, _ := c.GetRawData()
 	log.Printf("[DirectDownload] 收到请求，Body长度: %d bytes", len(bodyBytes))
-	
+
 	// 重新设置请求体供后续使用
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-	
+
 	var req DirectDownloadRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("[DirectDownload] ❌ JSON解析失败: %v", err)
@@ -225,6 +225,14 @@ func SubmitDirectDownload(c *gin.Context) {
 	log.Printf("[DirectDownload] ✓ JSON解析成功")
 	log.Printf("[DirectDownload] ComicID: %s, Type: %s, Episodes: %d", req.ComicID, req.Type, len(req.Episodes))
 	
+	// 打印完整请求用于调试
+	if len(req.Episodes) == 0 {
+		log.Printf("[DirectDownload] ⚠️ Episodes 为空！完整请求: %s", string(bodyBytes))
+	} else {
+		log.Printf("[DirectDownload] 第一个Episode示例: Order=%d, Name=%s, PageURLs=%d, Headers=%d", 
+			req.Episodes[0].Order, req.Episodes[0].Name, len(req.Episodes[0].PageURLs), len(req.Episodes[0].Headers))
+	}
+
 	if req.ComicID == "" || len(req.Episodes) == 0 {
 		log.Printf("[DirectDownload] ❌ 参数验证失败: ComicID=%s, Episodes=%d", req.ComicID, len(req.Episodes))
 		c.JSON(http.StatusBadRequest, gin.H{
