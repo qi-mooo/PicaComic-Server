@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -28,30 +29,36 @@ func GetComics(c *gin.Context) {
 // GetComicDetail 获取漫画详情
 func GetComicDetail(c *gin.Context) {
 	id := c.Param("id")
+	log.Printf("[GetComicDetail] 请求漫画详情，ID: %s", id)
 
 	comic, err := services.GetDownloadManager().GetComic(id)
 	if err != nil {
+		log.Printf("[GetComicDetail] 漫画不存在，ID: %s, 错误: %v", id, err)
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "漫画不存在",
 		})
 		return
 	}
 
+	log.Printf("[GetComicDetail] 找到漫画，ID: %s, Title: %s", id, comic.Title)
 	c.JSON(http.StatusOK, comic)
 }
 
 // GetComicCover 获取漫画封面
 func GetComicCover(c *gin.Context) {
 	id := c.Param("id")
+	log.Printf("[GetComicCover] 请求漫画封面，ID: %s", id)
 
 	coverPath, err := services.GetDownloadManager().GetCoverPath(id)
 	if err != nil {
+		log.Printf("[GetComicCover] 封面不存在，ID: %s, 错误: %v", id, err)
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "封面不存在",
 		})
 		return
 	}
 
+	log.Printf("[GetComicCover] 封面路径: %s", coverPath)
 	c.File(coverPath)
 }
 
@@ -90,6 +97,7 @@ func GetComicPage(c *gin.Context) {
 
 	ep, err := strconv.Atoi(epStr)
 	if err != nil {
+		log.Printf("[GetComicPage] 无效的章节号，ID: %s, ep: %s", id, epStr)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "无效的章节号",
 		})
@@ -98,6 +106,7 @@ func GetComicPage(c *gin.Context) {
 
 	page, err := strconv.Atoi(pageStr)
 	if err != nil {
+		log.Printf("[GetComicPage] 无效的页码，ID: %s, ep: %d, page: %s", id, ep, pageStr)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "无效的页码",
 		})
@@ -106,6 +115,7 @@ func GetComicPage(c *gin.Context) {
 
 	imagePath, err := services.GetDownloadManager().GetImagePath(id, ep, page)
 	if err != nil {
+		log.Printf("[GetComicPage] 图片不存在，ID: %s, ep: %d, page: %d, 错误: %v", id, ep, page, err)
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "图片不存在",
 		})
