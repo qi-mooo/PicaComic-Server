@@ -1315,14 +1315,17 @@ func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error 
 				return fmt.Errorf("下载的文件过小（可能失败）: %d bytes", info.Size())
 			}
 
+			// 稍微等待确保文件完全写入磁盘
+			time.Sleep(10 * time.Millisecond)
+
 			// JM 漫画需要反混淆处理
 			if task.Type == "jm" {
 				// 从漫画ID中提取章节ID (移除 "jm" 前缀)
 				epsId := strings.TrimPrefix(task.ComicID, "jm")
-				
+
 				// 从 URL 中提取 bookId
 				bookId := extractBookIdFromUrl(pageURL)
-				
+
 				fmt.Printf("[JM反混淆] 处理图片: epsId=%s, bookId=%s\n", epsId, bookId)
 				if err := DescrambleJmImage(filePath, epsId, "220980", bookId); err != nil {
 					fmt.Printf("[警告] JM图片反混淆失败: %v\n", err)

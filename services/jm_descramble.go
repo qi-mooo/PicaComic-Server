@@ -1,10 +1,12 @@
 package services
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"image/jpeg"
 	"image/png"
+	_ "image/gif"  // 支持 GIF 格式
 	"os"
 	"path/filepath"
 	"strconv"
@@ -42,29 +44,24 @@ func DescrambleJmImage(inputPath, epsId, scrambleId, bookId string) error {
 		return nil
 	}
 
-	// 读取图片
-	file, err := os.Open(inputPath)
+	// 读取图片文件内容
+	fileData, err := os.ReadFile(inputPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("读取文件失败: %w", err)
 	}
-	defer file.Close()
 
-	// 解码图片
-	var img image.Image
-	ext := strings.ToLower(filepath.Ext(inputPath))
-	switch ext {
-	case ".jpg", ".jpeg":
-		img, err = jpeg.Decode(file)
-	case ".png":
-		img, err = png.Decode(file)
-	default:
-		img, _, err = image.Decode(file)
+	// 检查文件是否为空或太小
+	if len(fileData) < 100 {
+		return fmt.Errorf("文件太小: %d bytes", len(fileData))
+	}
+
+	// 自动检测并解码图片（不依赖扩展名）
+	img, format, err := image.Decode(bytes.NewReader(fileData))
+	if err != nil {
+		return fmt.Errorf("解码图片失败 (format: %s): %w", format, err)
 	}
 	
-	if err != nil {
-		return fmt.Errorf("解码图片失败: %w", err)
-	}
-	file.Close()
+	fmt.Printf("[JM反混淆] 检测到图片格式: %s, 尺寸: %dx%d\n", format, img.Bounds().Dx(), img.Bounds().Dy())
 
 	// 获取图片尺寸
 	bounds := img.Bounds()
@@ -101,19 +98,28 @@ func DescrambleJmImage(inputPath, epsId, scrambleId, bookId string) error {
 		}
 	}
 
-	// 保存处理后的图片
+	// 保存处理后的图片，根据原始格式选择编码器
 	outFile, err := os.Create(inputPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("创建输出文件失败: %w", err)
 	}
 	defer outFile.Close()
 
-	switch ext {
-	case ".jpg", ".jpeg":
-		return jpeg.Encode(outFile, newImg, &jpeg.Options{Quality: 95})
-	case ".png":
-		return png.Encode(outFile, newImg)
+	// 根据检测到的格式保存
+	switch format {
+	case "jpeg", "jpg":
+		err = jpeg.Encode(outFile, newImg, &jpeg.Options{Quality: 95})
+	case "png":
+		err = png.Encode(outFile, newImg)
 	default:
-		return jpeg.Encode(outFile, newImg, &jpeg.Options{Quality: 95})
+		// 默认使用 JPEG
+		err = jpeg.Encode(outFile, newImg, &jpeg.Options{Quality: 95})
 	}
+	
+	if err != nil {
+		return fmt.Errorf("编码图片失败: %w", err)
+	}
+	
+	fmt.Printf("[JM反混淆] 图片已保存 (格式: %s)\n", format)
+	return nil
 }
