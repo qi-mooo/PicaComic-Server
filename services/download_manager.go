@@ -1246,9 +1246,9 @@ func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error 
 			Order                int                 `json:"order"`
 			Name                 string              `json:"name"`
 			PageURLs             []string            `json:"page_urls"`
-			Headers              map[string]string   `json:"headers"`                 // 客户端提供的 HTTP headers
-			DescrambleParams     map[string]string   `json:"descramble_params"`       // 全局反混淆参数（可选）
-			PageDescrambleParams []map[string]string `json:"page_descramble_params"`  // 每个图片的反混淆参数（可选）
+			Headers              map[string]string   `json:"headers"`                // 客户端提供的 HTTP headers
+			DescrambleParams     map[string]string   `json:"descramble_params"`      // 全局反混淆参数（可选）
+			PageDescrambleParams []map[string]string `json:"page_descramble_params"` // 每个图片的反混淆参数（可选）
 		} `json:"episodes"`
 	}
 
@@ -1347,19 +1347,20 @@ func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error 
 				var bookId string
 				if ep.PageDescrambleParams != nil && index < len(ep.PageDescrambleParams) {
 					bookId = ep.PageDescrambleParams[index]["bookId"]
-					fmt.Printf("[反混淆] 使用客户端提供的 bookId: %s\n", bookId)
+					fmt.Printf("[反混淆] 图片 %d/%d - URL: %s\n", index+1, len(ep.PageURLs), pageURL)
+					fmt.Printf("[反混淆] 使用客户端提供的 bookId: '%s'\n", bookId)
 				} else {
 					// 回退：从 URL 中提取 bookId
 					bookId = extractBookIdFromUrl(pageURL)
-					fmt.Printf("[反混淆] 回退：从URL提取 bookId: %s\n", bookId)
+					fmt.Printf("[反混淆] 回退：从URL提取 bookId: '%s'\n", bookId)
 				}
 
-				fmt.Printf("[反混淆] 处理图片 %d: epsId=%s, scrambleId=%s, bookId=%s\n", index+1, epsId, scrambleId, bookId)
+				fmt.Printf("[反混淆] 参数: epsId=%s, scrambleId=%s, bookId=%s, 文件=%s\n", epsId, scrambleId, bookId, filePath)
 				if err := DescrambleJmImage(filePath, epsId, scrambleId, bookId); err != nil {
-					fmt.Printf("[警告] 图片反混淆失败: %v\n", err)
+					fmt.Printf("[❌ 错误] 图片 %d 反混淆失败: %v\n", index+1, err)
 					// 不中断下载，继续处理其他图片
 				} else {
-					fmt.Printf("[反混淆] ✅ 图片 %d 反混淆成功\n", index+1)
+					fmt.Printf("[✅ 成功] 图片 %d 反混淆完成\n", index+1)
 				}
 			}
 
