@@ -1204,18 +1204,36 @@ func sanitizeFolderName(name string) string {
 }
 
 // extractBookIdFromUrl 从 JM 图片 URL 中提取 bookId
+// 与客户端逻辑一致：
+// 1. url.substring(i + 1, url.length - 5)
+// 2. bookId.replaceAll(RegExp(r"\..+"), "")
 func extractBookIdFromUrl(url string) string {
-	// JM URL 格式: https://cdn.../photos/12345/abc123.jpg
-	// bookId 是文件名（不含扩展名）
-	parts := strings.Split(url, "/")
-	if len(parts) > 0 {
-		filename := parts[len(parts)-1]
-		// 移除扩展名和查询参数
-		filename = strings.Split(filename, "?")[0]
-		filename = strings.TrimSuffix(filename, filepath.Ext(filename))
-		return filename
+	// JM URL 格式: https://cdn.../photos/12345/abc123.webp
+	// 客户端逻辑：从最后一个 / 之后开始，去掉最后5个字符（.webp）
+	
+	// 先移除查询参数
+	url = strings.Split(url, "?")[0]
+	
+	// 找到最后一个 /
+	lastSlash := strings.LastIndex(url, "/")
+	if lastSlash == -1 || lastSlash == len(url)-1 {
+		return ""
 	}
-	return ""
+	
+	// 提取文件名部分
+	filename := url[lastSlash+1:]
+	
+	// 去掉最后5个字符（与客户端一致）
+	if len(filename) > 5 {
+		filename = filename[:len(filename)-5]
+	}
+	
+	// 移除第一个 . 之后的所有内容（与客户端一致）
+	if dotIndex := strings.Index(filename, "."); dotIndex != -1 {
+		filename = filename[:dotIndex]
+	}
+	
+	return filename
 }
 
 // downloadDirectComic 直接下载模式（客户端已获取URL）
@@ -1323,7 +1341,7 @@ func (dm *DownloadManager) downloadDirectComic(task *models.DownloadTask) error 
 			if ep.DescrambleParams != nil && len(ep.DescrambleParams) > 0 {
 				epsId := ep.DescrambleParams["epsId"]
 				scrambleId := ep.DescrambleParams["scrambleId"]
-				
+
 				// 从 URL 中提取 bookId
 				bookId := extractBookIdFromUrl(pageURL)
 

@@ -51,9 +51,9 @@ func getSegmentationNum(epsId, scrambleID, pictureName string) int {
 func DescrambleJmImage(inputPath, epsId, scrambleId, bookId string) error {
 	// 计算分割数
 	num := getSegmentationNum(epsId, scrambleId, bookId)
-	
+
 	fmt.Printf("[JM反混淆] epsId=%s, scrambleId=%s, bookId=%s, num=%d\n", epsId, scrambleId, bookId, num)
-	
+
 	if num <= 1 {
 		// 不需要处理
 		fmt.Printf("[JM反混淆] 无需反混淆 (num=%d)\n", num)
@@ -76,7 +76,7 @@ func DescrambleJmImage(inputPath, epsId, scrambleId, bookId string) error {
 	if err != nil {
 		return fmt.Errorf("解码图片失败 (format: %s): %w", format, err)
 	}
-	
+
 	fmt.Printf("[JM反混淆] 检测到图片格式: %s, 尺寸: %dx%d\n", format, img.Bounds().Dx(), img.Bounds().Dy())
 
 	// 获取图片尺寸
@@ -113,8 +113,8 @@ func DescrambleJmImage(inputPath, epsId, scrambleId, bookId string) error {
 	for i := num - 1; i >= 0; i-- {
 		block := blocks[i]
 		currBlockHeight := block.end - block.start
-		
-		fmt.Printf("[JM反混淆] 复制块 %d (src: %d-%d) -> (dst: %d-%d)\n", 
+
+		fmt.Printf("[JM反混淆] 复制块 %d (src: %d-%d) -> (dst: %d-%d)\n",
 			i, block.start, block.end, y, y+currBlockHeight)
 
 		// 复制像素
